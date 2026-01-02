@@ -1,4 +1,5 @@
-name: Build Paraformer ONNX
+
+Name: Build SenseVoice ONNX
 
 on:
   workflow_dispatch:
@@ -17,32 +18,39 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libsndfile1 ffmpeg git-lfs
-          pip install torch torchaudio onnxruntime onnx pydub numpy funasr
+          pip install -U funasr modelscope torch torchaudio onnxruntime onnx numpy
 
-      - name: Download Original Model
+      - name: Export SenseVoice Small
         run: |
-          git lfs install
-          git clone https://www.modelscope.cn/damo/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1.git model_files
-
-      - name: Fix Paths & Export
-        # Yahan hum folder ke andar ja kar script chala rahe hain
-        working-directory: ./Paraformer_Chinese
-        run: |
-          # Paths ko correct karna (kyunki model_files root mein hai, isliye ../ use kiya)
-          sed -i 's|/home/iamj/Downloads/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1|../model_files|g' Export_Paraformer.py
-          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Paraformer.onnx|../Paraformer.onnx|g' Export_Paraformer.py
-          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Vocab_Paraformer.txt|../Vocab_Paraformer.txt|g' Export_Paraformer.py
+          python -c "
+          from funasr import AutoModel
+          import os
           
-          python Export_Paraformer.py
+          # Model load aur export logic
+          model_id = 'iic/SenseVoiceSmall'
+          output_dir = './SenseVoice_Export'
+          
+          model = AutoModel(model=model_id, device='cpu')
+          
+          # FunASR ka internal export function jo SenseVoice ke liye optimized hai
+          # Isme quantization False rakha hai taki quality best rahe
+          res = model.export(output_dir=output_dir, quantize=False)
+          print('Export Completed Successfully!')
+          "
 
-      - name: Upload Result
+      - name: Prepare Files for Mobile
+        run: |
+          # Sabse zaroori files ko root mein move kar rahe hain
+          cp SenseVoice_Export/model.onnx ./SenseVoice.onnx
+          cp SenseVoice_Export/tokens.json ./SenseVoice_tokens.json
+          # Config file bhi le lo, kabhi-kabhi feature extraction mein kaam aati hai
+          cp SenseVoice_Export/config.json ./config.json
+
+      - name: Upload SenseVoice Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Paraformer_Mobile_Files
+          name: SenseVoice_Mobile_Files
           path: |
-            Paraformer.onnx
-            Vocab_Paraformer.txt
-            model_files/tokens.json
-
+            SenseVoice.onnx
+            SenseVoice_tokens.json
+            config.json
