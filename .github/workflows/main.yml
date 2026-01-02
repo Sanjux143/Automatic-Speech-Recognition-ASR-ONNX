@@ -1,17 +1,17 @@
 name: Build Paraformer ONNX
 
 on:
-  workflow_dispatch: # Isse aap manually 'Run' button daba sakenge
+  workflow_dispatch:
 
 jobs:
   export_job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -27,11 +27,13 @@ jobs:
           git clone https://www.modelscope.cn/damo/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1.git model_files
 
       - name: Fix Paths & Export
+        # Yahan hum folder ke andar ja kar script chala rahe hain
+        working-directory: ./Paraformer_Chinese
         run: |
-          # Script ke andar ke hardcoded paths ko GitHub runner ke paths se badalna
-          sed -i 's|/home/iamj/Downloads/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1|./model_files|g' Export_Paraformer.py
-          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Paraformer.onnx|./Paraformer.onnx|g' Export_Paraformer.py
-          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Vocab_Paraformer.txt|./Vocab_Paraformer.txt|g' Export_Paraformer.py
+          # Paths ko correct karna (kyunki model_files root mein hai, isliye ../ use kiya)
+          sed -i 's|/home/iamj/Downloads/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1|../model_files|g' Export_Paraformer.py
+          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Paraformer.onnx|../Paraformer.onnx|g' Export_Paraformer.py
+          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Vocab_Paraformer.txt|../Vocab_Paraformer.txt|g' Export_Paraformer.py
           
           python Export_Paraformer.py
 
@@ -43,3 +45,4 @@ jobs:
             Paraformer.onnx
             Vocab_Paraformer.txt
             model_files/tokens.json
+
