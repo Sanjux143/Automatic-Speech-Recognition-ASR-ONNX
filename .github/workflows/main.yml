@@ -1,0 +1,45 @@
+name: Build Paraformer ONNX
+
+on:
+  workflow_dispatch: # Isse aap manually 'Run' button daba sakenge
+
+jobs:
+  export_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 ffmpeg git-lfs
+          pip install torch torchaudio onnxruntime onnx pydub numpy funasr
+
+      - name: Download Original Model
+        run: |
+          git lfs install
+          git clone https://www.modelscope.cn/damo/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1.git model_files
+
+      - name: Fix Paths & Export
+        run: |
+          # Script ke andar ke hardcoded paths ko GitHub runner ke paths se badalna
+          sed -i 's|/home/iamj/Downloads/speech_paraformer_asr_nat-zh-cn-16k-common-vocab8358-tensorflow1|./model_files|g' Export_Paraformer.py
+          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Paraformer.onnx|./Paraformer.onnx|g' Export_Paraformer.py
+          sed -i 's|/home/DakeQQ/Downloads/Paraformer_ONNX/Vocab_Paraformer.txt|./Vocab_Paraformer.txt|g' Export_Paraformer.py
+          
+          python Export_Paraformer.py
+
+      - name: Upload Result
+        uses: actions/upload-artifact@v3
+        with:
+          name: Paraformer_Mobile_Files
+          path: |
+            Paraformer.onnx
+            Vocab_Paraformer.txt
+            model_files/tokens.json
