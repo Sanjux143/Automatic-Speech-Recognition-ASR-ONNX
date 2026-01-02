@@ -1,7 +1,10 @@
 name: Build SenseVoice ONNX
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Jab bhi main branch pe commit hoga, ye auto run ho jayega
+  workflow_dispatch: # Manual option bhi rakha hai backup ke liye
 
 jobs:
   export_job:
@@ -17,42 +20,36 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install -U funasr modelscope torch torchaudio onnxruntime onnx numpy
-          pip install git+https://github.com/alibaba-damo-academy/FunASR.git # Latest version for export fixes
+          pip install -U torch torchaudio numpy scipy
+          pip install -U funasr modelscope onnxruntime onnx onnxscript
+          pip install git+https://github.com/alibaba-damo-academy/FunASR.git
 
       - name: Export SenseVoice Small
         run: |
           python -c "
           import os
           from funasr import AutoModel
-          
-          # Model ID from ModelScope
           model_id = 'iic/SenseVoiceSmall'
-          
-          # Load model
-          model = AutoModel(model=model_id, device='cpu')
-          
-          # Export to ONNX
-          # SenseVoiceSmall requires specific export parameters
           output_dir = os.path.abspath('SenseVoice_Export')
-          res = model.export(output_dir=output_dir, quantize=False)
-          print(f'Export finished. Files in: {output_dir}')
+          model = AutoModel(model=model_id, device='cpu', trust_remote_code=True)
+          try:
+              res = model.export(output_dir=output_dir, quantize=False)
+              print('Export Successful')
+          except Exception as e:
+              import traceback
+              traceback.print_exc()
+              exit(1)
           "
 
-      - name: Verify and Organize Files
+      - name: Prepare Artifacts
         run: |
-          mkdir -p artifacts
-          # SenseVoice export typically creates a subfolder based on model name
-          # We search for .onnx and .json files and move them to artifacts
-          find SenseVoice_Export -name "*.onnx" -exec cp {} artifacts/SenseVoice.onnx \;
-          find SenseVoice_Export -name "tokens.json" -exec cp {} artifacts/SenseVoice_tokens.json \;
-          find SenseVoice_Export -name "config.json" -exec cp {} artifacts/config.json \;
-          
-          echo "Files in artifacts folder:"
-          ls -R artifacts
+          mkdir -p final_output
+          find SenseVoice_Export -name "*.onnx" -exec cp {} final_output/SenseVoice.onnx \;
+          find SenseVoice_Export -name "tokens.json" -exec cp {} final_output/tokens.json \;
+          find SenseVoice_Export -name "config.json" -exec cp {} final_output/config.json \;
 
-      - name: Upload SenseVoice Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SenseVoice_ONNX_Mobile
-          path: artifacts/
+          name: SenseVoice_Files
+          path: final_output/
